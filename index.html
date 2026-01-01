@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CheDex's Calendar Generator</title>
+
+<!-- LIBRARIES -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+body{
+  background:#fafafa;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  padding:40px 20px;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* APP */
+.app{
+  max-width:1200px;
+  width:100%;
+  background:white;
+  border-radius:20px;
+  padding:40px;
+  box-shadow:0 4px 24px rgba(0,0,0,0.06);
+  border:1px solid #e8e8e8;
+}
+
+/* MAIN LAYOUT */
+.main-layout{
+  display:grid;
+  grid-template-columns:380px 1fr;
+  gap:40px;
+  align-items:start;
+}
+
+.settings-panel{
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+}
+
+/* TITLE */
+h1{
+  text-align:center;
+  font-weight:600;
+  margin-bottom:30px;
+  font-size:28px;
+  color:#111;
+  letter-spacing:-0.5px;
+}
+
+/* FONT UPLOAD */
+.font-section{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  padding:16px;
+  background:#f9f9f9;
+  border-radius:12px;
+  border:1px solid #f0f0f0;
+}
+.font-group{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.font-group label{
+  font-size:12px;
+  color:#555;
+  font-weight:500;
+}
+.font-group input[type=file]{
+  font-size:12px;
+  padding:8px 10px;
+}
+.checkbox-row{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:8px;
+  font-size:13px;
+  color:#666;
+}
+.checkbox-row label{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  cursor:pointer;
+}
+.checkbox-row input{
+  margin:0;
+  cursor:pointer;
+}
+
+/* CONTROLS */
+.controls{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+select,button{
+  padding:10px 14px;
+  font-size:13px;
+  border-radius:8px;
+  border:1px solid #e0e0e0;
+  background:white;
+  transition:all 0.2s ease;
+  width:100%;
+}
+select:hover{
+  border-color:#bbb;
+}
+button{
+  background:#111;
+  color:white;
+  cursor:pointer;
+  border:none;
+  font-weight:500;
+  white-space:nowrap;
+}
+button:hover{
+  background:#333;
+  transform:translateY(-1px);
+  box-shadow:0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* PREVIEW */
+.preview{
+  display:flex;
+  justify-content:center;
+}
+
+/* PREVIEW CONTAINER */
+.calendar-box{
+  width:520px;
+  height:520px;
+  background:#f5f5f5;
+  border-radius:20px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 2px 16px rgba(0,0,0,0.04);
+  border:1px solid #e8e8e8;
+}
+
+/* CALENDAR */
+.calendar{
+  width:78%;
+  aspect-ratio:1/1;
+  display:grid;
+  grid-template-rows:1fr .9fr .2fr 4fr auto;
+  text-align:center;
+}
+
+/* FONT TARGETS */
+.month{ font-family: var(--headerFont, inherit); }
+.weekdays{ font-family: var(--weekdayFont, inherit); }
+.days{ font-family: var(--numberFont, inherit); }
+
+/* TEXT */
+.month{
+  font-size:34px;
+  letter-spacing:4px;
+  font-weight:500;
+}
+.weekdays,.days{
+  font-size:24px;
+  font-weight:500;
+}
+.weekdays{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  letter-spacing:5px;
+}
+.days{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+}
+.divider{
+  height:1px;
+  width:100%;
+}
+
+/* COPYRIGHT */
+.copyright{
+  font-size:12px;
+  margin-top:2px;
+  opacity:0.6;
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+<h1>CheDex's Calendar Generator</h1>
+
+<div class="main-layout">
+  <!-- LEFT PANEL: SETTINGS -->
+  <div class="settings-panel">
+    <!-- FONT UPLOAD -->
+    <div class="font-section">
+      <div class="font-group">
+        <label>Header Font</label>
+        <input type="file" id="headerFont" accept=".ttf,.otf,.woff,.woff2">
+      </div>
+
+      <div class="font-group">
+        <label>Weekday Font</label>
+        <input type="file" id="weekdayFont" accept=".ttf,.otf,.woff,.woff2">
+      </div>
+
+      <div class="font-group">
+        <label>Number Font</label>
+        <input type="file" id="numberFont" accept=".ttf,.otf,.woff,.woff2">
+      </div>
+
+      <div class="checkbox-row">
+        <label>
+          <input type="checkbox" id="hideHeader"> Hide Month / Year
+        </label>
+        <label>
+          <input type="checkbox" id="showDivider" checked> Show divider line
+        </label>
+      </div>
+    </div>
+
+    <!-- CONTROLS -->
+    <div class="controls">
+      <select id="colorSelect">
+        <option value="#000000">Black</option>
+        <option value="#ffffff" selected>White</option>
+        <option value="#6f4e37">Coffee Brown</option>
+        <option value="#8a8a8a">Gray</option>
+      </select>
+
+      <button onclick="downloadAllTransparentPNG()">Download ALL Transparent PNG</button>
+      <button onclick="downloadAllSVG()">Download ALL SVG</button>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL: PREVIEW -->
+  <div class="preview">
+    <div class="calendar-box" id="calendarBox">
+      <div class="calendar" id="calendar"></div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+const months=[
+  'JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE',
+  'JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'
+];
+
+/* RENDER CALENDAR */
+function render(monthIndex){
+  const year = 2026;
+  const color = colorSelect.value;
+  const firstDay = new Date(year,monthIndex,1).getDay();
+  const days = new Date(year,monthIndex+1,0).getDate();
+
+  calendar.innerHTML = `
+    <div class="month"
+      style="color:${color};visibility:${hideHeader.checked?'hidden':'visible'}">
+      ${months[monthIndex]} ${year}
+    </div>
+
+    <div class="weekdays" style="color:${color}">
+      <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+    </div>
+
+    ${showDivider.checked
+      ? `<div class="divider" style="background:${color}"></div>`
+      : `<div></div>`}
+
+    <div class="days" style="color:${color}">
+      ${'<div></div>'.repeat(firstDay)}
+      ${Array.from({length:days},(_,i)=>`<div>${i+1}</div>`).join('')}
+    </div>
+
+    <div class="copyright" style="color:${color}">
+      
+    </div>
+  `;
+}
+
+/* LOAD FONT */
+function loadFont(input, cssVar){
+  const file=input.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const name='font_'+Math.random().toString(36).slice(2);
+    const style=document.createElement('style');
+    style.textContent=`
+      @font-face{font-family:${name};src:url(${e.target.result});}
+      .calendar{--${cssVar}:${name};}
+    `;
+    document.head.appendChild(style);
+  };
+  reader.readAsDataURL(file);
+}
+
+headerFont.onchange=()=>loadFont(headerFont,'headerFont');
+weekdayFont.onchange=()=>loadFont(weekdayFont,'weekdayFont');
+numberFont.onchange=()=>loadFont(numberFont,'numberFont');
+
+/* DOWNLOAD TRANSPARENT PNG */
+async function downloadAllTransparentPNG(){
+  const zip = new JSZip();
+  const box = document.getElementById('calendarBox');
+  const originalBg = box.style.background;
+  box.style.background = 'transparent';
+
+  for(let i=0;i<12;i++){
+    render(i);
+    const canvas = await html2canvas(box,{backgroundColor:null,scale:3});
+    const blob = await new Promise(res=>canvas.toBlob(res));
+    zip.file(`${months[i]}_2026.png`, blob);
+  }
+
+  box.style.background = originalBg;
+  zip.generateAsync({type:'blob'}).then(b=>{
+    saveAs(b,`calendar_2026_transparent_png.zip`);
+  });
+}
+
+/* DOWNLOAD SVG */
+function downloadAllSVG(){
+  const zip = new JSZip();
+  months.forEach((m,i)=>{
+    zip.file(`${m}_2026.svg`, generateSVG(i));
+  });
+  zip.generateAsync({type:'blob'}).then(b=>{
+    saveAs(b,`calendar_2026_svg.zip`);
+  });
+}
+
+/* GENERATE SVG */
+function generateSVG(monthIndex){
+  const year = 2026;
+  const color=colorSelect.value;
+  const fd=new Date(year,monthIndex,1).getDay();
+  const days=new Date(year,monthIndex+1,0).getDate();
+  const size=2000, cell=size/7;
+
+  let svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
+  <style>
+    text{fill:${color};font-family:sans-serif;font-weight:500}
+  </style>`;
+
+  if(!hideHeader.checked){
+    svg+=`<text x="${size/2}" y="240" text-anchor="middle" font-size="140" letter-spacing="8">
+      ${months[monthIndex]} ${year}
+    </text>`;
+  }
+
+  const names=['S','M','T','W','T','F','S'];
+  names.forEach((n,i)=>{
+    svg+=`<text x="${(i+.5)*cell}" y="420" text-anchor="middle" font-size="110" letter-spacing="10">${n}</text>`;
+  });
+
+  if(showDivider.checked){
+    svg+=`<line x1="0" x2="${size}" y1="480" y2="480" stroke="${color}" stroke-width="4"/>`;
+  }
+
+  let r=0,c=fd;
+  for(let d=1;d<=days;d++){
+    svg+=`<text x="${(c+.5)*cell}" y="${560+r*190}" text-anchor="middle" font-size="120">${d}</text>`;
+    c++; if(c===7){c=0;r++;}
+  }
+
+  const copyrightY = 560 + (r + 1) * 190 + 40;
+
+  svg+=`<text x="${size/2}" y="${copyrightY}" text-anchor="middle" font-size="60" opacity="0.6">
+    © CheDex Online Store
+  </text>`;
+
+  svg+=`</svg>`;
+  return svg;
+}
+
+/* LIVE UPDATE */
+colorSelect.onchange =
+hideHeader.onchange =
+showDivider.onchange = ()=>render(0);
+
+render(0);
+</script>
+
+</body>
+</html>
